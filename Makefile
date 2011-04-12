@@ -4,12 +4,12 @@ INCLUDE := /usr/include/atk-1.0
 CFLAGS := -fPIC -m32 -I$(INCLUDE)
 CXXFLAGS := -fPIC -m32 -I$(INCLUDE)
 LFLAGS := -shared -m32
-OBJECTS := native_events.o send_event.o
+DIRS := linux
+OBJECTS := native_events.o linux/linux_events.o
 TARGET := libnative_events.so
 
 $(TARGET): $(OBJECTS)
 	$(CC) $(LFLAGS) $^ -o $@
-	#cp $(TARGET) ../content/
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@

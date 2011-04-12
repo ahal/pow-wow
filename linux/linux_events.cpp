@@ -1,4 +1,4 @@
-#include "native_events.h"
+#include "../native_events.h"
 #include <stdlib.h>
 
 GdkDevice* getSomeDevice() {
