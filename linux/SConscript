@@ -1,0 +1,6 @@
+Import('env')
+
+objs = []
+objs.append(env.Object('linux_events.cpp'))
+objs.append(env.Object('linux_utils.cpp'))
+Return('objs')
