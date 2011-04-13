@@ -1,5 +1,9 @@
 #include "native_events.h"
 
-guint sendClick(gint x, gint y, guint button) {
-    return click(x, y, button);
+guint click(gint x, gint y, guint button) {
+    return _click(x, y, button);
+}
+
+guint keypress(char val, modifiers mods) {
+    return _keypress(val, &mods);
 }

@@ -5,7 +5,7 @@ CFLAGS := -fPIC -m32 -I$(INCLUDE)
 CXXFLAGS := -fPIC -m32 -I$(INCLUDE)
 LFLAGS := -shared -m32
 DIRS := linux
-OBJECTS := native_events.o linux/linux_events.o
+OBJECTS := native_events.o linux/linux_events.o linux/linux_utils.o
 TARGET := libnative_events.so
 
 $(TARGET): $(OBJECTS)
