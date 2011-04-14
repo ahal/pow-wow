@@ -19,10 +19,9 @@ def is_windows():
         return True
     return False
 
-subdirs = []
-
 # We need to instantiate the env module differently on different platforms
 env = None
+subdirs = []
 
 if is_mac():
     print "No Mac Support"
@@ -48,6 +47,9 @@ elif is_windows():
     # it is included. Otherwise, you get a error: "missing kernel32.lib".
     sdkpath = os.path.join(os.environ['WindowsSdkDir'], 'lib')
     env['LIBPATH'] = os.environ['LIBPATH'] + ';' + sdkpath
+    
+    # Build our windows subdirectory
+    subdirs.append('windows')
 else:
     print "Your OS is not recognized"
 
@@ -64,5 +66,5 @@ for subdir in subdirs:
 objs.append('native_events.c')
 
 # Make the library
-env.Library('native_events', objs)
+env.SharedLibrary('native_events', objs)
 

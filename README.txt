@@ -6,15 +6,19 @@ Then, in this directory type:
 scons
 
 = Windows =
-In Windows, you'll need to run this in a visual studio enabled command prompt.
-You can find that in your start menu in the mess of things visual studio installs.
-Once you get that open, assuming you've installed scons via a msys mozilla-build shell into
-the mozilla-build python path, you need to do the following in the visual studio 
-command prompt:
-> set PATH=c:\mozilla-build\python;%PATH%
-> set PYTHON_HOME=c:\mozilla-build\python
+In Windows you can either build it with an msys shell (powered by mozilla-build) or
+you can run it using a visual studio command prompt (found in the start menu beneath the
+visual studio folder).  You'll need to have python installed and scons installed
+into that python either through virutalenv or into sitepackages.
 
-Now you should be able to run scons
+== Fun Hat Trick ==
+If you're on Windows and you need to run in the visual studio command line for
+some reason (perhaps you're hacking on build stuff and are worried about '/' versus
+'\'.  Then if you installed scons into the mozilla-build/msys python environment, 
+you can simply add two environment variables to the visual studio shell and "install"
+it there:
+> set PATH=C:\mozilla-build\python;%PATH%
+> set PYTHON_HOME=C:\mozilla-build\python
 
 = Still under construction =
 This is obviously, still under construction.  More info to come.
