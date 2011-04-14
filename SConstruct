@@ -1,4 +1,6 @@
 import sys
+import os
+
 # TODO: I'm quite certain the Configuration settings can handle this, but 
 # I can't seem to make it work, so punting for now...
 def is_mac():
@@ -18,17 +20,34 @@ def is_windows():
     return False
 
 subdirs = []
-env = Environment()
+
+# We need to instantiate the env module differently on different platforms
+env = None
 
 if is_mac():
     print "No Mac Support"
 elif is_linux():
+    env = Environment()
     subdirs.append('linux')
-
+    
     # This is necessary to get gtk to compile and link properly
     env.ParseConfig('pkg-config --cflags --libs gtk+-2.0')
 elif is_windows():
-    print "No Windows Support"
+    # Ensure you launched us the right way
+    if (not 'INCLUDE' in os.environ or not 'WindowsSdkDir' in os.environ):
+        # Then you didn't launch us with a visual studio shell
+        print "Error: You must run this from a visual studio enabled command prompt."
+        print "Please also ensure you have a valid installation of the Windows SDK for your platform"
+        sys.exit(1)
+     
+    env = Environment(ENV = {'PATH': os.environ['PATH'], 
+                             'INCLUDE': os.environ['INCLUDE']
+                            })
+
+    # We need to build out the path to the sdk lib directory so that we can be sure 
+    # it is included. Otherwise, you get a error: "missing kernel32.lib".
+    sdkpath = os.path.join(os.environ['WindowsSdkDir'], 'lib')
+    env['LIBPATH'] = os.environ['LIBPATH'] + ';' + sdkpath
 else:
     print "Your OS is not recognized"
 
