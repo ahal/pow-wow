@@ -14,6 +14,6 @@ typedef struct {
 // Utility methods for linux events
 GdkDevice* getSomeDevice();
 GdkWindow* getActiveWindow();
-guint32 TimeSinceBootMsec();
+guint32 getTimestamp();
 guint getModifierState(modifiers *mods);
 #endif

@@ -1,51 +1,62 @@
 #include "../native_events.h"
 #include <stdlib.h>
 
-// Creates a generic key event
-GdkEvent *createKeyEvent(GdkEventType type) {
-    GdkWindow *window = getActiveWindow();
+// Creates a key event
+guint createKeyEvent(GdkEventType type, guint keyval, guint state) {
+    guint timestamp = getTimestamp();
     GdkEvent *event = gdk_event_new(type);
-    event->key.window = window;
+    event->key.window = getActiveWindow();
     event->key.send_event = false; // Not a synthesized event
-    return event;
+    event->key.time = timestamp;
+    event->key.keyval = keyval;
+    event->key.state = state;
+    
+    // Submit and free the event
+    gdk_event_put(event);
+    //gdk_event_free(event);
+    return timestamp;
 }
 
-extern "C" guint _keypress(char c, modifiers *mods) {
-    printf("shift: %d\n", mods->shift);
-    guint keyval = gdk_unicode_to_keyval(c);
-    printf("keyval: %c\n", keyval);
-    GdkEvent *keydown = createKeyEvent(GDK_KEY_PRESS);
-    keydown->key.time = TimeSinceBootMsec();
-    keydown->key.keyval = keyval;
-    keydown->key.state = getModifierState(mods);
+guint createModifierEvents(GdkEventType type, modifiers *mods) {
+}
 
-    gdk_event_put(keydown);
+extern "C" guint _keypress(guint32 c, modifiers *mods) {
+    createModifierEvents(GDK_KEY_PRESS, mods);
+    
+    guint state = getModifierState(mods);
+    createKeyEvent(GDK_KEY_PRESS, c, state);
+    createKeyEvent(GDK_KEY_RELEASE, c, state);
 
-    GdkEvent *keyup = gdk_event_copy(keydown);
-    keyup->key.type = GDK_KEY_RELEASE;
-    keyup->key.time++;
-
-    gdk_event_free(keyup);
+    createModifierEvents(GDK_KEY_RELEASE, mods);
     return true;
 }
 
-extern "C" guint _sendKeys() {
 
+extern "C" guint _sendKeys(char *val, modifiers *mods) {
+    createModifierEvents(GDK_KEY_PRESS, mods);
+
+    printf("str: %s\n", val);
+    guint state = getModifierState(mods);
+    for (int i = 0; val[i] != '\0'; i++) {
+        guint keyval = gdk_unicode_to_keyval(val[i]);
+        createKeyEvent(GDK_KEY_PRESS, keyval, state);
+        createKeyEvent(GDK_KEY_RELEASE, keyval, state);
+    }
+
+    createModifierEvents(GDK_KEY_RELEASE, mods);
+    return true;
 }
 
 // Send a click event
 extern "C" guint _click(gint x, gint y, guint button) {
     GdkWindow *window = getActiveWindow();
-    //printf("window: %p\n", window);
-    //printf("window type: %d\n", gdk_window_get_window_type(window));
-    
     GdkDevice *device = getSomeDevice();
     
     // Create the press event
     GdkEvent *press = gdk_event_new(GDK_BUTTON_PRESS);
     press->button.window = window;
     press->button.send_event = false; // Not a synthesized event
-    press->button.time = TimeSinceBootMsec();
+    press->button.time = getTimestamp();
     press->button.x = x ;
     press->button.y = y ;
     press->button.button = button;
@@ -68,7 +79,6 @@ extern "C" guint _click(gint x, gint y, guint button) {
     // Cleanup
     g_object_unref(device);
     // Only free this event because it was copied from the first one
-    // (Bad things happen if you free both)
     gdk_event_free(release);
 
     return true;

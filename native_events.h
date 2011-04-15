@@ -4,24 +4,22 @@
 #include <gdk/gdk.h>
 #include "linux/linux_utils.h"
 
-#ifndef __cplusplus
-// Define C shim methods here
-guint click(gint x, gint y, guint button);
-guint keypress(char val, modifiers mods);
-
-#else
+#ifdef __cplusplus
+#define ext extern "C"
 // Define C++ 'private' methods here
-GdkEvent *createKeyEvent(GdkEventType type);
+guint createKeyEvent(GdkEventType type, char c, guint state);
+guint createModifierEvents(GdkEventType type, modifiers *mods);
+#else
+#define ext
+// Define C shim methods here (this is the API exposed to the user)
+guint click(gint x, gint y, guint button);
+guint sendKeys(char *val, modifiers mods);
+guint keypress(guint32 val, modifiers mods);
 #endif
 
 // Define C++ method implementations here
-#ifdef __cplusplus
-extern "C"
-#endif
-guint _click(gint x, gint y, guint button);
-#ifdef __cplusplus
-extern "C"
-#endif
-guint _keypress(char val, modifiers *mods);
+ext guint _click(gint x, gint y, guint button);
+ext guint _sendKeys(char *val, modifiers *mods);
+ext guint _keypress(guint32 val, modifiers *mods);
 
 #endif

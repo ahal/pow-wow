@@ -32,7 +32,7 @@ GdkWindow* getActiveWindow() {
 }
 
 // This is the timestamp needed in the GDK events.
-guint32 TimeSinceBootMsec() {
+guint32 getTimestamp() {
     struct timespec clk_tm;
     const int msec_nsec_factor = 1000000;
     const int sec_msec_factor = 1000;
