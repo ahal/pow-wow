@@ -1,22 +1,13 @@
 #include "native_events.h"
-// We need to talk about this interface.  This isn't going to work
-#ifdef __linux
-guint click(gint x, gint y, guint button) {
+
+libexport uint click(int x, int y, uint button) {
     return _click(x, y, button);
 }
 
-guint keypress(guint32 val, modifiers mods) {
+libexport uint keypress(uint32 val, modifiers mods) {
     return _keypress(val, &mods);
 }
 
-guint sendKeys(char *val, modifiers mods) {
+libexport uint sendKeys(char *val, modifiers mods) {
     return _sendKeys(val, &mods);
 }
-#endif
-
-#ifdef __WIN32
-#define DllExport __declspec( dllexport )
-DllExport unsigned int click(int x, int y, char flags[32], int button) {
-    return _click(x, y, flags, button);
-}
-#endif

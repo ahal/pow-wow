@@ -1,4 +1,4 @@
-#include "../native_events.h"
+#include "linux_events.h"
 #include <stdlib.h>
 
 // Creates a key event
