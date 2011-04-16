@@ -43,13 +43,3 @@ guint32 getTimestamp() {
     }
     return 0;
 }
-
-// Returns the modifier state from the given modifier struct
-guint getModifierState(modifiers *mods) {
-    guint state = 0;
-    if (mods->shift == 1) state |= GDK_SHIFT_MASK;
-    if (mods->ctrl == 1) state |= GDK_CONTROL_MASK;
-    if (mods->alt == 1) state |= GDK_MOD1_MASK; // This isn't guaranteed to be alt but it is for most systems
-    if (mods->meta == 1) state |= GDK_META_MASK;
-    return state;
-}

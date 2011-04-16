@@ -1,8 +1,10 @@
 #include "linux_events.h"
 #include <stdlib.h>
+#include <gdk/gdkkeysyms.h>
 
 // Creates a key event
-guint createKeyEvent(GdkEventType type, guint keyval, guint state) {
+guint createKeyEvent(GdkEventType type, guint keyval, guint state, guint isModifier) {
+
     guint timestamp = getTimestamp();
     GdkEvent *event = gdk_event_new(type);
     event->key.window = getActiveWindow();
@@ -10,6 +12,18 @@ guint createKeyEvent(GdkEventType type, guint keyval, guint state) {
     event->key.time = timestamp;
     event->key.keyval = keyval;
     event->key.state = state;
+
+    GdkKeymapKey *keys;
+    gint num_keys;
+    if (keyval != 0 && gdk_keymap_get_entries_for_keyval(
+                            gdk_keymap_get_default(), keyval, &keys, &num_keys)) {
+        event->key.hardware_keycode = keys[0].keycode;
+        event->key.group = keys[0].group;
+        event->key.is_modifier = isModifier;
+        g_free(keys);
+    }
+    
+    printf("key: %s, type: %i, state: %i, hkc: %i\n", gdk_keyval_name(keyval), type, state, event->key.hardware_keycode);
     
     // Submit and free the event
     gdk_event_put(event);
@@ -17,33 +31,49 @@ guint createKeyEvent(GdkEventType type, guint keyval, guint state) {
     return timestamp;
 }
 
-guint createModifierEvents(GdkEventType type, modifiers *mods) {
+// Create modifier key events
+guint createModifierEvents(GdkEventType type, modifiers *mods, guint state) {
+    // Control key event
+    if (mods->ctrl == 1) {
+        createKeyEvent(type, gdk_keyval_from_name("Control_L"), state, 0);
+        state ^= GDK_CONTROL_MASK;  // ^ is the xor operator, this toggles the appropriate bit
+    }
+    // Shift key event
+    if (mods->shift == 1) {
+        createKeyEvent(type, gdk_keyval_from_name("Shift_L"), state, 0);
+        state ^= GDK_SHIFT_MASK;
+    }
+    // Alt key event
+    if (mods->alt == 1) {
+        createKeyEvent(type, gdk_keyval_from_name("Alt_L"), state, 0);
+        state ^= GDK_MOD1_MASK;
+    }
+    // Return the resulting bit mask
+    return state;
 }
 
 extern "C" guint _keypress(guint32 c, modifiers *mods) {
-    createModifierEvents(GDK_KEY_PRESS, mods);
+    guint state = createModifierEvents(GDK_KEY_PRESS, mods, 0);
     
-    guint state = getModifierState(mods);
-    createKeyEvent(GDK_KEY_PRESS, c, state);
-    createKeyEvent(GDK_KEY_RELEASE, c, state);
+    createKeyEvent(GDK_KEY_PRESS, c, state, 0);
+    createKeyEvent(GDK_KEY_RELEASE, c, state, 0);
 
-    createModifierEvents(GDK_KEY_RELEASE, mods);
+    createModifierEvents(GDK_KEY_RELEASE, mods, state);
     return true;
 }
 
 
 extern "C" guint _sendKeys(char *val, modifiers *mods) {
-    createModifierEvents(GDK_KEY_PRESS, mods);
+    guint state = createModifierEvents(GDK_KEY_PRESS, mods, 0);
 
     printf("str: %s\n", val);
-    guint state = getModifierState(mods);
     for (int i = 0; val[i] != '\0'; i++) {
         guint keyval = gdk_unicode_to_keyval(val[i]);
-        createKeyEvent(GDK_KEY_PRESS, keyval, state);
-        createKeyEvent(GDK_KEY_RELEASE, keyval, state);
+        createKeyEvent(GDK_KEY_PRESS, keyval, state, 1);
+        createKeyEvent(GDK_KEY_RELEASE, keyval, state, 1);
     }
 
-    createModifierEvents(GDK_KEY_RELEASE, mods);
+    createModifierEvents(GDK_KEY_RELEASE, mods, state);
     return true;
 }
 
