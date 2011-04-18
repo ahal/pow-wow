@@ -24,7 +24,7 @@
 
 // Define C shim methods here (this is the API exposed to the user)
 uint click(int x, int y, uint button);
-uint sendKeys(char *val, modifiers mods);
-uint keypress(uint32 val, modifiers mods);
+uint sendKeys(char *val, modifiers *mods);
+uint keypress(uint32 val, modifiers *mods);
 
 #endif // header guard
