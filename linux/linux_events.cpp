@@ -2,14 +2,23 @@
 #include <stdlib.h>
 #include <gdk/gdkkeysyms.h>
 
-// Creates a key event
-guint createKeyEvent(GdkEventType type, guint keyval, guint state) {
+using namespace std;
 
-    guint timestamp = getTimestamp();
+guint submit_event_list(list<GdkEvent*> events) {
+    list<GdkEvent*>::iterator it; 
+    for (it = events.begin(); it != events.end(); ++it) {
+        gdk_event_put(*it);
+        gdk_event_free(*it);
+    }
+    return true;
+}
+
+// Creates a key event
+GdkEvent* createKeyEvent(GdkEventType type, guint keyval, guint state) {
     GdkEvent *event = gdk_event_new(type);
     event->key.window = getActiveWindow();
     event->key.send_event = false; // Not a synthesized event
-    event->key.time = timestamp;
+    event->key.time = getTimestamp();
     event->key.state = state;
 
     GdkKeymapKey *keys;
@@ -21,66 +30,100 @@ guint createKeyEvent(GdkEventType type, guint keyval, guint state) {
             event->key.group = keys[0].group;
             g_free(keys);
 
-            gdk_keymap_translate_keyboard_state(gdk_keymap_get_default(), keys[0].keycode, (GdkModifierType)state, keys[0].group, &keyval, 0, 0, 0);
+            gdk_keymap_translate_keyboard_state(gdk_keymap_get_default(), keys[0].keycode,
+                                                    (GdkModifierType)state, keys[0].group, &keyval, 0, 0, 0);
             printf("key: %s, type: %i, state: %i, hkc: %i, level: %i\n", gdk_keyval_name(keyval), type, state, event->key.hardware_keycode, keys[0].level);
         }
     }
     event->key.keyval = keyval;
-    
-    // Submit and free the event
-    gdk_event_put(event);
-    //gdk_event_free(event);
-    return timestamp;
+    return event;
 }
 
-// Create modifier key events
-guint createModifierEvents(GdkEventType type, modifiers *mods, guint state) {
+/**
+ * Create and submit modifier key events
+ *
+ * type - The type of the event, e.g GDK_KEY_PRESS [IN]
+ * modifiers - A modifier struct [IN]
+ * state - The state of the modifier keys [IN/OUT]
+ */ 
+list<GdkEvent*> createModifierEvents(GdkEventType type, modifiers *mods, guint *state) {
+    list<GdkEvent*> events;
     // Control key event
     if (mods->ctrl == 1) {
-        createKeyEvent(type, gdk_keyval_from_name("Control_L"), state);
-        state ^= GDK_CONTROL_MASK;  // ^ is the xor operator, this toggles the appropriate bit
+        events.push_back(createKeyEvent(type, gdk_keyval_from_name("Control_L"), *state));
+        *state ^= GDK_CONTROL_MASK;  // ^ is the xor operator, this toggles the appropriate bit
     }
     // Shift key event
     if (mods->shift == 1) {
-        createKeyEvent(type, gdk_keyval_from_name("Shift_L"), state);
-        state ^= GDK_SHIFT_MASK;
+        events.push_back(createKeyEvent(type, gdk_keyval_from_name("Shift_L"), *state));
+        *state ^= GDK_SHIFT_MASK;
     }
     // Alt key event
     if (mods->alt == 1) {
-        createKeyEvent(type, gdk_keyval_from_name("Alt_L"), state);
-        state ^= GDK_MOD1_MASK;
+        events.push_back(createKeyEvent(type, gdk_keyval_from_name("Alt_L"), *state));
+        *state ^= GDK_MOD1_MASK;
     }
-    // Return the resulting bit mask
-    return state;
+    // Meta key event
+    if (mods->meta == 1) {
+        events.push_back(createKeyEvent(type, gdk_keyval_from_name("Meta_L"), *state));
+        *state ^= GDK_META_MASK;
+    }
+    // Return the event list
+    return events;
 }
 
-extern "C" guint _keypress(guint32 c, modifiers *mods) {
-    guint state = createModifierEvents(GDK_KEY_PRESS, mods, 0);
+// Send a keypress event
+extern "C" guint32 _keypress(guint32 c, modifiers *mods) {
+    list<GdkEvent*> events;
+    guint state = 0;
+    list<GdkEvent*> ret_list = createModifierEvents(GDK_KEY_PRESS, mods, &state);
+    events.splice(events.end(), ret_list);
     
-    createKeyEvent(GDK_KEY_PRESS, c, state);
-    createKeyEvent(GDK_KEY_RELEASE, c, state);
+    GdkEvent *press = createKeyEvent(GDK_KEY_PRESS, c, state);
+    events.push_back(press);
 
-    createModifierEvents(GDK_KEY_RELEASE, mods, state);
-    return true;
+    GdkEvent *release = gdk_event_copy(press);
+    release->key.type = GDK_KEY_RELEASE;
+    release->key.time = getTimestamp();
+    events.push_back(release);
+
+    ret_list = createModifierEvents(GDK_KEY_RELEASE, mods, &state);
+    events.splice(events.end(), ret_list);
+
+    submit_event_list(events);
+    return getTimestamp();
 }
 
-
-extern "C" guint _sendKeys(char *val, modifiers *mods) {
-    guint state = createModifierEvents(GDK_KEY_PRESS, mods, 0);
+// Send a string of key events
+extern "C" guint32 _sendKeys(char *val, modifiers *mods) {
+    guint state = 0;
+    list<GdkEvent*> events; 
+    list<GdkEvent*> ret_list = createModifierEvents(GDK_KEY_PRESS, mods, &state);
+    events.splice(events.end(), ret_list);
 
     printf("str: %s\n", val);
     for (int i = 0; val[i] != '\0'; i++) {
         guint keyval = gdk_unicode_to_keyval(val[i]);
-        createKeyEvent(GDK_KEY_PRESS, keyval, state);
-        createKeyEvent(GDK_KEY_RELEASE, keyval, state);
+        GdkEvent *press = createKeyEvent(GDK_KEY_PRESS, keyval, state);
+        events.push_back(press);
+
+        GdkEvent *release = gdk_event_copy(press);
+        release->key.type = GDK_KEY_RELEASE;
+        release->key.time = getTimestamp();
+        events.push_back(release);
     }
 
-    createModifierEvents(GDK_KEY_RELEASE, mods, state);
-    return true;
+    ret_list = createModifierEvents(GDK_KEY_RELEASE, mods, &state);
+    events.splice(events.end(), ret_list);
+
+    submit_event_list(events);
+    return getTimestamp();
 }
 
 // Send a click event
-extern "C" guint _click(gint x, gint y, guint button) {
+extern "C" guint32 _click(gint x, gint y, guint button) {
+    list<GdkEvent*> events;
+
     GdkWindow *window = getActiveWindow();
     GdkDevice *device = getSomeDevice();
     
@@ -94,25 +137,15 @@ extern "C" guint _click(gint x, gint y, guint button) {
     press->button.button = button;
     press->button.device = device;
 
-    printf("x: %f\n", press->button.x);
-    printf("y: %f\n", press->button.y);
-    
-    // Submit the press event
-    gdk_event_put(press);
+    events.push_back(press); 
    
     // Create the release event
     GdkEvent *release = gdk_event_copy(press);
     release->button.type = GDK_BUTTON_RELEASE;
-    release->button.time++;
+    release->button.time = getTimestamp();
 
-    // Submit the release event
-    gdk_event_put(release);
-    
-    // Cleanup
-    g_object_unref(device);
-    // Only free this event because it was copied from the first one
-    gdk_event_free(release);
-
-    return true;
+    events.push_back(release);
+    submit_event_list(events);
+    return getTimestamp();
 }
 

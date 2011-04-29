@@ -25,10 +25,12 @@ GdkWindow* getActiveWindow() {
     // Another child is created inside the first child, also get it
     list = gdk_window_get_children(window);
     window = (GdkWindow*)list->data;
+    
+    // Cleanup
     g_list_free(list);
-
     g_object_unref(top);
-    return window;
+
+    return (GdkWindow*)g_object_ref(window);
 }
 
 // This is the timestamp needed in the GDK events.
@@ -39,7 +41,8 @@ guint32 getTimestamp() {
 
     int clk_ret = clock_gettime(CLOCK_MONOTONIC, &clk_tm);
     if (clk_ret == 0) {
-        return (clk_tm.tv_sec * sec_msec_factor +(clk_tm.tv_nsec / msec_nsec_factor));
+        guint32 timestamp = clk_tm.tv_sec * sec_msec_factor +(clk_tm.tv_nsec / msec_nsec_factor);
+        return timestamp;
     }
     return 0;
 }
